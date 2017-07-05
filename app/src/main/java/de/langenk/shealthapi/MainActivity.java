@@ -13,6 +13,7 @@ import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 import com.koushikdutta.async.http.server.HttpServerRequestCallback;
 import com.koushikdutta.async.http.server.AsyncHttpServerResponse;
 import com.samsung.android.sdk.healthdata.HealthConnectionErrorResult;
+import com.samsung.android.sdk.healthdata.HealthDataStore;
 import com.samsung.android.sdk.healthdata.HealthPermissionManager;
 import com.samsung.android.sdk.healthdata.HealthResultHolder;
 
@@ -32,7 +33,25 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        healthData = new HealthData(this);
+        healthData = new HealthData();
+        healthData.connect(this, new HealthData.ConnectionListener() {
+
+            @Override
+            public void onPermissionMissing() {
+                MainActivity.this.requestHealthDataPermission();
+            }
+
+            @Override
+            public void onConnected() {}
+
+            @Override
+            public void onConnectionFailed(HealthConnectionErrorResult error) {
+                MainActivity.this.showConnectionFailureDialog(error);
+            }
+
+            @Override
+            public void onDisconnected() {}
+        });
 
         AsyncHttpServer server = new AsyncHttpServer();
         List<WebSocket> _sockets = new ArrayList<WebSocket>();
@@ -55,11 +74,21 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
-
-// listen on port 5000
         server.listen(5000);
-// browsing http://localhost:5000 will return Hello!!!
+    }
+
+    void requestHealthDataPermission() {
+        healthData.requestPermission(this, new HealthData.PermissionListener() {
+            @Override
+            public void onPermissionGranted() {
+
+            }
+
+            @Override
+            public void onPermissionDenied() {
+
+            }
+        });
     }
 
 
@@ -74,10 +103,52 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(android.view.MenuItem item) {
         if(item.getItemId() == (MENU_ITEM_PERMISSION_SETTING)) {
-            healthData.requestPermission();
+            this.requestHealthDataPermission();
         }
         return true;
     }
 
+    private void showConnectionFailureDialog(final HealthConnectionErrorResult error) {
 
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        //mConnError = error;
+        String message = "Connection with Samsung Health is not available";
+
+        if (error.hasResolution()) {
+            switch(error.getErrorCode()) {
+                case HealthConnectionErrorResult.PLATFORM_NOT_INSTALLED:
+                    message = "Please install Samsung Health";
+                    break;
+                case HealthConnectionErrorResult.OLD_VERSION_PLATFORM:
+                    message = "Please upgrade Samsung Health";
+                    break;
+                case HealthConnectionErrorResult.PLATFORM_DISABLED:
+                    message = "Please enable Samsung Health";
+                    break;
+                case HealthConnectionErrorResult.USER_AGREEMENT_NEEDED:
+                    message = "Please agree with Samsung Health policy";
+                    break;
+                default:
+                    message = "Please make Samsung Health available";
+                    break;
+            }
+        }
+
+        alert.setMessage(message);
+
+        alert.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int id) {
+                if (error.hasResolution()) {
+                    error.resolve(MainActivity.this);
+                }
+            }
+        });
+
+        if (error.hasResolution()) {
+            alert.setNegativeButton("Cancel", null);
+        }
+
+        alert.show();
+    }
 }
