@@ -17,8 +17,13 @@ import com.samsung.android.sdk.healthdata.HealthDataStore;
 import com.samsung.android.sdk.healthdata.HealthPermissionManager;
 import com.samsung.android.sdk.healthdata.HealthResultHolder;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +47,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onConnected() {}
+            public void onConnected() {
+            }
 
             @Override
             public void onConnectionFailed(HealthConnectionErrorResult error) {
@@ -50,31 +56,68 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onDisconnected() {}
+            public void onDisconnected() {
+            }
         });
 
         AsyncHttpServer server = new AsyncHttpServer();
-        List<WebSocket> _sockets = new ArrayList<WebSocket>();
-        /**/
 
-        server.get("/", new HttpServerRequestCallback() {
+        server.get("/steps/today", new HttpServerRequestCallback() {
             @Override
-            public void onRequest(AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
-
+            public void onRequest(final AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
                 MainActivity.this.runOnUiThread(new Runnable() {
                     public void run() {
-                        healthData.readTodayStepCount(new StepCountReporter.StepCountListener() {
+                        Calendar from = Calendar.getInstance();
+                        Calendar to = Calendar.getInstance();
+                        setStartOfDay(from);
+                        to.add(Calendar.DAY_OF_WEEK, 1);
+                        setStartOfDay(to);
+                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new StepCountReporter.ResultListener() {
                             @Override
-                            public void onSuccess(int result) {
-                                response.send("Count: " + result);
+                            public void onSuccess(JsonAble result) {
+
+                                response.send(result.toJSON().toString());
                             }
+
                         });
+
+                    }
+                });
+
+            }
+        });
+        server.get("/steps/week", new HttpServerRequestCallback() {
+            @Override
+            public void onRequest(final AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    public void run() {
+                        Calendar from = Calendar.getInstance();
+                        Calendar to = Calendar.getInstance();
+                        from.add(Calendar.DAY_OF_WEEK, -6);
+                        setStartOfDay(from);
+                        to.add(Calendar.DAY_OF_WEEK, 1);
+                        setStartOfDay(to);
+                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new StepCountReporter.ResultListener() {
+                            @Override
+                            public void onSuccess(JsonAble result) {
+                                response.send(result.toJSON().toString());
+                            }
+
+                        });
+
                     }
                 });
 
             }
         });
         server.listen(5000);
+    }
+
+    void setStartOfDay(Calendar cal) {
+        cal.set(Calendar.MILLISECOND, 0);
+        cal.set(Calendar.SECOND, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
     }
 
     void requestHealthDataPermission() {

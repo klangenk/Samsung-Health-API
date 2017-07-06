@@ -19,7 +19,6 @@
 package de.langenk.shealthapi;
 
 import com.samsung.android.sdk.healthdata.HealthConstants;
-import com.samsung.android.sdk.healthdata.HealthDataObserver;
 import com.samsung.android.sdk.healthdata.HealthDataResolver;
 import com.samsung.android.sdk.healthdata.HealthDataResolver.Filter;
 import com.samsung.android.sdk.healthdata.HealthDataResolver.ReadRequest;
@@ -30,15 +29,18 @@ import com.samsung.android.sdk.healthdata.HealthResultHolder;
 import android.database.Cursor;
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 
 import static de.langenk.shealthapi.Constants.APP_TAG;
 
 public class StepCountReporter {
     private final HealthDataStore mStore;
+    private static final long MILLIS_PER_DAY = 1000*60*60*24;
 
-    public interface StepCountListener {
-        void onSuccess(int result);
+    public interface ResultListener {
+        void onSuccess(JsonAble result);
     }
 
     public StepCountReporter(HealthDataStore store) {
@@ -47,21 +49,28 @@ public class StepCountReporter {
 
 
     // Read the today's step count on demand
-    public void readTodayStepCount(final StepCountListener listener) {
+    public void readStepCount(Date from, Date to, String deviceUid, final ResultListener listener) {
         HealthDataResolver resolver = new HealthDataResolver(mStore, null);
 
         // Set time range from start time of today to the current time
-        long startTime = getStartTimeOfToday();
-        long endTime = System.currentTimeMillis();
+        final long startTime = from.getTime();
+        final long endTime = to.getTime();
         Filter filter = Filter.and(Filter.greaterThanEquals(HealthConstants.StepCount.START_TIME, startTime),
                 Filter.lessThanEquals(HealthConstants.StepCount.START_TIME, endTime));
 
+        if(deviceUid != null){
+            filter = Filter.and(filter, Filter.eq(HealthConstants.StepCount.DEVICE_UUID, deviceUid));
+        }
+
         HealthDataResolver.ReadRequest request = new ReadRequest.Builder()
                 .setDataType(HealthConstants.StepCount.HEALTH_DATA_TYPE)
-                .setProperties(new String[] {HealthConstants.StepCount.COUNT})
+                .setProperties(new String[] {HealthConstants.StepCount.COUNT, HealthConstants.StepCount.START_TIME})
                 .setFilter(filter)
                 .build();
-
+        
+        final Calendar cal = Calendar.getInstance();
+        cal.setTime(from);
+        final List<StepCount> list = new List<StepCount>();
         try {
             resolver.read(request).setResultListener(new HealthResultHolder.ResultListener<ReadResult>() {
 
@@ -69,12 +78,27 @@ public class StepCountReporter {
                 public void onResult(ReadResult result) {
                     int count = 0;
                     Cursor c = null;
-
                     try {
                         c = result.getResultCursor();
+                        Log.d(APP_TAG, Arrays.toString(c.getColumnNames()));
                         if (c != null) {
+                            long timeSlot = cal.getTimeInMillis();
                             while (c.moveToNext()) {
+                                long timeData = c.getLong(c.getColumnIndex(HealthConstants.StepCount.START_TIME));
+                                if ( timeSlot > timeData || timeData > timeSlot + MILLIS_PER_DAY) {
+                                    list.add(new StepCount(count, cal.getTime()));
+                                    count = 0;
+                                    cal.add(Calendar.DAY_OF_WEEK, 1);
+                                    timeSlot = cal.getTimeInMillis();
+                                }
                                 count += c.getInt(c.getColumnIndex(HealthConstants.StepCount.COUNT));
+                            }
+                            while (timeSlot < endTime) {
+                                timeSlot = cal.getTimeInMillis();
+                                list.add(new StepCount(count, cal.getTime()));
+                                count = 0;
+                                cal.add(Calendar.DAY_OF_WEEK, 1);
+                                timeSlot = cal.getTimeInMillis();
                             }
                         }
                     } finally {
@@ -82,24 +106,18 @@ public class StepCountReporter {
                             c.close();
                         }
                     }
-                    listener.onSuccess(count);
+                    if(list.size() == 1) {
+                        listener.onSuccess(list.get(0));
+                    } else {
+                        listener.onSuccess(new ResultWrapper("collection", list));
+                    }
+
                 }
             });
         } catch (Exception e) {
             Log.e(APP_TAG, e.getClass().getName() + " - " + e.getMessage());
             Log.e(APP_TAG, "Getting step count fails.");
         }
-    }
-
-    private long getStartTimeOfToday() {
-        Calendar today = Calendar.getInstance();
-
-        today.set(Calendar.HOUR_OF_DAY, 0);
-        today.set(Calendar.MINUTE, 0);
-        today.set(Calendar.SECOND, 0);
-        today.set(Calendar.MILLISECOND, 0);
-
-        return today.getTimeInMillis();
     }
 
 }

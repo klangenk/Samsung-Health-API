@@ -18,6 +18,7 @@ import com.samsung.android.sdk.healthdata.HealthDataService;
 import com.samsung.android.sdk.healthdata.HealthConstants;
 import com.samsung.android.sdk.healthdata.HealthDataStore;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -118,7 +119,8 @@ public class HealthData {
         }
     }
 
-    public void readTodayStepCount(StepCountReporter.StepCountListener listener) {
-        mReporter.readTodayStepCount(listener);
+    public void readStepCount(Date from, Date to, String deviceUid, StepCountReporter.ResultListener listener) {
+        mReporter.readStepCount(from, to, deviceUid, listener);
     }
+
 }
