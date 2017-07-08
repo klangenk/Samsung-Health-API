@@ -4,8 +4,8 @@ import java.util.Calendar;
 import java.util.Date;
 
 public class StepCount {
-    private int count;
-    private Date date;
+    public int count;
+    public Date date;
 
 
     public StepCount(int count){

@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
                         setStartOfDay(from);
                         to.add(Calendar.DAY_OF_WEEK, 1);
                         setStartOfDay(to);
-                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new StepCountReporter.ResultListener() {
+                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new HealthData.ResultListener() {
                             @Override
                             public void onSuccess(Object result) {
 
@@ -80,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
             public void onRequest(final AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
                 MainActivity.this.runOnUiThread(new Runnable() {
                     public void run() {
-                        healthData.getDevices(new StepCountReporter.ResultListener() {
+                        healthData.getDevices(new HealthData.ResultListener() {
                             @Override
                             public void onSuccess(Object result) {
 
@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
                         setStartOfDay(from);
                         to.add(Calendar.DAY_OF_WEEK, 1);
                         setStartOfDay(to);
-                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new StepCountReporter.ResultListener() {
+                        healthData.readStepCount(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new HealthData.ResultListener() {
                             @Override
                             public void onSuccess(Object result) {
                                 response.send(gson.toJson(result));
@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
                         setMidOfDay(from);
                         to.add(Calendar.DAY_OF_WEEK, 1);
                         setMidOfDay(to);
-                        healthData.readSleep(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new StepCountReporter.ResultListener() {
+                        healthData.readSleep(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new HealthData.ResultListener() {
                             @Override
                             public void onSuccess(Object result) {
                                 response.send(gson.toJson(result));
