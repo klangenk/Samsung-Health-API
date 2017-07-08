@@ -29,9 +29,14 @@ import com.samsung.android.sdk.healthdata.HealthResultHolder;
 import android.database.Cursor;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+
+import de.langenk.shealthapi.model.ListWrapper;
+import de.langenk.shealthapi.model.StepCount;
+import de.langenk.shealthapi.model.TimeRange;
 
 import static de.langenk.shealthapi.Constants.APP_TAG;
 
@@ -40,13 +45,67 @@ public class StepCountReporter {
     private static final long MILLIS_PER_DAY = 1000*60*60*24;
 
     public interface ResultListener {
-        void onSuccess(JsonAble result);
+        void onSuccess(Object result);
     }
 
     public StepCountReporter(HealthDataStore store) {
         mStore = store;
     }
 
+    // Read the today's step count on demand
+    public void readSleep(Date from, Date to, String deviceUid, final ResultListener listener) {
+        HealthDataResolver resolver = new HealthDataResolver(mStore, null);
+
+        // Set time range from start time of today to the current time
+        final long startTime = from.getTime();
+        final long endTime = to.getTime();
+        Filter filter = Filter.and(Filter.greaterThanEquals(HealthConstants.Sleep.START_TIME, startTime),
+                Filter.lessThanEquals(HealthConstants.Sleep.START_TIME, endTime));
+
+        if(deviceUid != null){
+            filter = Filter.and(filter, Filter.eq(HealthConstants.StepCount.DEVICE_UUID, deviceUid));
+        }
+
+        HealthDataResolver.ReadRequest request = new ReadRequest.Builder()
+                .setDataType(HealthConstants.Sleep.HEALTH_DATA_TYPE)
+                .setProperties(new String[] {HealthConstants.Sleep.END_TIME, HealthConstants.Sleep.START_TIME})
+                .setFilter(filter)
+                .build();
+
+        final Calendar cal = Calendar.getInstance();
+        cal.setTime(from);
+        final ArrayList<TimeRange> list = new ArrayList<TimeRange>();
+        try {
+            resolver.read(request).setResultListener(new HealthResultHolder.ResultListener<ReadResult>() {
+
+                @Override
+                public void onResult(ReadResult result) {
+                    Cursor c = null;
+                    try {
+                        c = result.getResultCursor();
+                        Log.d(APP_TAG, Arrays.toString(c.getColumnNames()));
+                        if (c != null) {
+                            long timeSlot = cal.getTimeInMillis();
+                            while (c.moveToNext()) {
+                                list.add(new TimeRange(
+                                        c.getLong(c.getColumnIndex(HealthConstants.Sleep.START_TIME)),
+                                        c.getLong(c.getColumnIndex(HealthConstants.Sleep.END_TIME))
+                                ));
+                            }
+                        }
+                    } finally {
+                        if (c != null) {
+                            c.close();
+                        }
+                    }
+                    listener.onSuccess(new ListWrapper(list));
+                }
+            });
+        } catch (Exception e) {
+            Log.e(APP_TAG, e.getClass().getName() + " - " + e.getMessage());
+            Log.e(APP_TAG, "Getting step count fails.");
+        }
+    }
 
     // Read the today's step count on demand
     public void readStepCount(Date from, Date to, String deviceUid, final ResultListener listener) {
@@ -70,7 +129,7 @@ public class StepCountReporter {
         
         final Calendar cal = Calendar.getInstance();
         cal.setTime(from);
-        final List<StepCount> list = new List<StepCount>();
+        final ArrayList<StepCount> list = new ArrayList<StepCount>();
         try {
             resolver.read(request).setResultListener(new HealthResultHolder.ResultListener<ReadResult>() {
 
@@ -109,7 +168,7 @@ public class StepCountReporter {
                     if(list.size() == 1) {
                         listener.onSuccess(list.get(0));
                     } else {
-                        listener.onSuccess(new ResultWrapper("collection", list));
+                        listener.onSuccess(new ListWrapper(list));
                     }
 
                 }

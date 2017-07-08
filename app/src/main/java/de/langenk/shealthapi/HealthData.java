@@ -2,22 +2,23 @@ package de.langenk.shealthapi;
 
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.util.Log;
-import de.langenk.shealthapi.Constants;
+
+import de.langenk.shealthapi.model.Device;
 
 import com.samsung.android.sdk.healthdata.HealthConnectionErrorResult;
+import com.samsung.android.sdk.healthdata.HealthDevice;
+import com.samsung.android.sdk.healthdata.HealthDeviceManager;
 import com.samsung.android.sdk.healthdata.HealthPermissionManager;
 import com.samsung.android.sdk.healthdata.HealthPermissionManager.PermissionKey;
-import com.samsung.android.sdk.healthdata.HealthPermissionManager.PermissionResult;
 import com.samsung.android.sdk.healthdata.HealthPermissionManager.PermissionType;
 import com.samsung.android.sdk.healthdata.HealthResultHolder;
 import com.samsung.android.sdk.healthdata.HealthDataService;
 import com.samsung.android.sdk.healthdata.HealthConstants;
 import com.samsung.android.sdk.healthdata.HealthDataStore;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Map;
@@ -35,6 +36,7 @@ public class HealthData {
     public HealthData() {
         mKeySet = new HashSet<PermissionKey>();
         mKeySet.add(new PermissionKey(HealthConstants.StepCount.HEALTH_DATA_TYPE, PermissionType.READ));
+        mKeySet.add(new PermissionKey(HealthConstants.Sleep.HEALTH_DATA_TYPE, PermissionType.READ));
     }
 
     public interface ConnectionListener extends HealthDataStore.ConnectionListener {
@@ -121,6 +123,20 @@ public class HealthData {
 
     public void readStepCount(Date from, Date to, String deviceUid, StepCountReporter.ResultListener listener) {
         mReporter.readStepCount(from, to, deviceUid, listener);
+    }
+
+    public void readSleep(Date from, Date to, String deviceUid, StepCountReporter.ResultListener listener) {
+        mReporter.readSleep(from, to, deviceUid, listener);
+    }
+
+
+    public void getDevices(StepCountReporter.ResultListener listener) {
+        HealthDeviceManager deviceManager = new HealthDeviceManager(mStore);
+        ArrayList<Device> list = new ArrayList<Device>();
+        for(HealthDevice device : deviceManager.getAllDevices()) {
+            list.add(new Device(device));
+        }
+        listener.onSuccess(list);
     }
 
 }

@@ -12,7 +12,7 @@
         android:theme="@style/AppTheme">
         <meta-data
             android:name="com.samsung.android.health.permission.read"
-            android:value="com.samsung.health.step_count" />
+            android:value="com.samsung.health.sleep;com.samsung.health.step_count" />
 
         <activity android:name=".MainActivity">
             <intent-filter>
