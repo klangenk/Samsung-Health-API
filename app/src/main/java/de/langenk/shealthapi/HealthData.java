@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.util.Log;
 
 import de.langenk.shealthapi.datareader.TimeRangeDataReader;
+import de.langenk.shealthapi.datareader.TimeRangeGroupedDataReader;
 import de.langenk.shealthapi.model.Device;
 import de.langenk.shealthapi.model.ListWrapper;
 import de.langenk.shealthapi.model.StepCount;
@@ -21,7 +22,6 @@ import static de.langenk.shealthapi.Constants.APP_TAG;
 
 public class HealthData extends AbstractHealthData {
 
-    private static final long MILLIS_PER_DAY = 1000*60*60*24;
 
 
 
@@ -54,30 +54,36 @@ public class HealthData extends AbstractHealthData {
     }
 
     public void readStepCount(final Date from, final Date to, String deviceUid, final ResultListener listener) {
-        new TimeRangeDataReader(
+        new TimeRangeGroupedDataReader(
                 mStore,
                 HealthConstants.StepCount.HEALTH_DATA_TYPE,
-                new String[] {HealthConstants.StepCount.COUNT, HealthConstants.StepCount.START_TIME},
+                HealthConstants.StepCount.COUNT,
                 from,
                 to,
                 deviceUid
         ) {
 
-            final ArrayList<StepCount> list = new ArrayList<StepCount>();
-
             @Override
-            protected void initialize() {
-                for (long i = from.getTime(); i < to.getTime(); i+= MILLIS_PER_DAY) {
-                    list.add(new StepCount(0, new Date(i)));
+            protected void handleFinished() {
+                if(list.size() == 1) {
+                    listener.onSuccess(list.get(0));
+                } else {
+                    listener.onSuccess(new ListWrapper(list));
                 }
             }
+        }.readData();
 
-            @Override
-            protected void handleEntry(Cursor c) {
-                long timeData = c.getLong(c.getColumnIndex(HealthConstants.StepCount.START_TIME));
-                int day = (int) ((timeData - from.getTime()) / MILLIS_PER_DAY);
-                list.get(day).count += c.getInt(c.getColumnIndex(HealthConstants.StepCount.COUNT));
-            }
+    }
+
+    public void readCalories(final Date from, final Date to, String deviceUid, final ResultListener listener) {
+        new TimeRangeGroupedDataReader(
+                mStore,
+                HealthConstants.Exercise.HEALTH_DATA_TYPE,
+                HealthConstants.Exercise.CALORIE,
+                from,
+                to,
+                deviceUid
+        ) {
 
             @Override
             protected void handleFinished() {

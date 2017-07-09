@@ -26,7 +26,4 @@ public abstract class TimeRangeDataReader extends DataReader {
         }
     }
 
-    protected abstract void handleEntry(Cursor c);
-    protected abstract void handleFinished();
-
 }

@@ -145,6 +145,31 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        server.get("/calories/week", new HttpServerRequestCallback() {
+            @Override
+            public void onRequest(final AsyncHttpServerRequest request, final AsyncHttpServerResponse response) {
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    public void run() {
+                        Calendar from = Calendar.getInstance();
+                        Calendar to = Calendar.getInstance();
+                        from.add(Calendar.DAY_OF_WEEK, -7);
+                        setMidOfDay(from);
+                        to.add(Calendar.DAY_OF_WEEK, 1);
+                        setMidOfDay(to);
+                        healthData.readCalories(from.getTime(), to.getTime(), request.getQuery().getString("deviceId"), new HealthData.ResultListener() {
+                            @Override
+                            public void onSuccess(Object result) {
+                                response.send(gson.toJson(result));
+                            }
+
+                        });
+
+                    }
+                });
+
+            }
+        });
+
         server.listen(5000);
     }
 
