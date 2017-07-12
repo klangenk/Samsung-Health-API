@@ -1,10 +1,20 @@
 package de.langenk.shealthapi;
 
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.View;
+import android.widget.Button;
 
 import com.google.gson.Gson;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
@@ -20,6 +30,12 @@ public class MainActivity extends AppCompatActivity {
     private final int MENU_ITEM_PERMISSION_SETTING = 1;
     private HealthData healthData;
     private Gson gson = new Gson();
+    private AsyncHttpServer server;
+    private Button button;
+    private boolean server_running;
+    private NotificationManager notificationManager;
+    private static int NOTIFICATION_ID = 2651515;
+    private static int SERVER_PORT = 5000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        AsyncHttpServer server = new AsyncHttpServer();
+        server = new AsyncHttpServer();
 
         server.get("/steps/today", new HttpServerRequestCallback() {
             @Override
@@ -169,8 +185,53 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        button = (Button) findViewById(R.id.btn_start_server);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (server_running) {
+                    server.stop();
+                    removeNotification();
+                } else {
+                    server.listen(SERVER_PORT);
+                    makeNotification();
+                }
+                server_running = !server_running;
+                button.setText(server_running ? "Stop Server" : "Start Server");
+            }
+        });
+        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-        server.listen(5000);
+    }
+
+
+    private void makeNotification() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        String URL = "http://localhost:" + SERVER_PORT;
+        intent.setData(Uri.parse(URL));
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+                NOTIFICATION_ID, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification.Builder builder = new Notification.Builder(this)
+                .setContentTitle("Samsung Health API")
+                .setContentText("Server is running on " + URL)
+                .setContentIntent(pendingIntent)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher))
+                ;
+        Notification n;
+
+        n = builder.build();
+
+        n.flags |= Notification.FLAG_NO_CLEAR | Notification.FLAG_ONGOING_EVENT;
+
+
+        notificationManager.notify(NOTIFICATION_ID, n);
+    }
+
+    private void removeNotification() {
+        notificationManager.cancel(NOTIFICATION_ID);
     }
 
     void setStartOfDay(Calendar cal) {

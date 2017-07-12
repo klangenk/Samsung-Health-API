@@ -9,8 +9,12 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="de.langenk.shealthapi.MainActivity">
 
-    <TextView
+    <Button
+        android:id="@+id/btn_start_server"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!" />
+        android:layout_centerVertical="true"
+        android:padding="25dp"
+        android:layout_centerHorizontal="true"
+        android:text="Start Server"/>
 </RelativeLayout>
